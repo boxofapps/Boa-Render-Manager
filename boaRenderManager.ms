@@ -6,10 +6,15 @@ tasksOutputFolder = @"D:\Temp\Tasks Output\"
 tasks = #()
 
 fn submitSceneAsNewRenderTask =
-(
-	local newTaskName = (dotnetclass "System.Datetime").Now.ToString("yyyy' 'MM' 'dd' - 'HH':'mm':'ss" ) + " - " + (getFilenameFile maxfilename)
+(	
+	local sceneMaxFileName = maxfilename
+	if sceneMaxFileName == "" do sceneMaxFileName = "untitled.max" 
+	local sceneName = (getFilenameFile sceneMaxFileName)
+	if sceneName == "" do sceneName = "untitled"
+	
+	local newTaskName = (dotnetclass "System.Datetime").Now.ToString("yyyy' 'MM' 'dd' - 'HH' 'mm' 'ss" ) + " - " + sceneName
 	local newTaskFolder = pathConfig.appendPath tasksFolder newTaskName
-	local newTaskMaxFilePath = pathConfig.appendPath newTaskFolder maxfilename
+	local newTaskMaxFilePath = pathConfig.appendPath newTaskFolder sceneMaxFileName
 
 	makeDir newTaskFolder
 
@@ -32,32 +37,61 @@ fn renderNext =
 		local getTaskFolderName = boaFnsGetDirectoryName (getFilenamePath task)
 		local taskOutputFolderPath = pathConfig.appendPath tasksOutputFolder getTaskFolderName
 		makeDir taskOutputFolderPath
+
+		loadMaxFile task quiet:true
+
 		print ("rendering task: " + getTaskFolderName)
 		
-		render() --sleep 5
+		max quick render --render() --sleep 5
 
 		print ("finished task: " + getTaskFolderName)
 	)
 	else print "No Tasks Available"
 )
 
-rollout renderManagerRoll "Render Manager"
-(
-  timer clock "testClock" interval:1000 --tick once a second
-  label lblStatus ""
-  on clock tick do
-  (
-	print "tick"
-	  
-	readTasks()
-	  
-    lblStatus.text = "remaining tasks: " + (tasks.count as string)
-	  
-	renderNext()
-  )
-)
+
 --createDialog renderManagerDialog
 
-try(closeRolloutFloater renderManagerFloater)catch()
-renderManagerFloater = newRolloutFloater "Render Manager" 250 250
-addRollout renderManagerRoll renderManagerFloater 
+global RenderManagerProcessorFloater
+fn openRenderManagerProcessor = 
+(
+	rollout roll "BOA Render Manager - Processor"
+	(
+	  timer clock "testClock" interval:1000 --tick once a second
+	  label lblStatus ""
+	  on clock tick do
+	  (
+		print "tick"
+		  
+		readTasks()
+		  
+		lblStatus.text = "remaining tasks: " + (tasks.count as string)
+		  
+		renderNext()
+	  )
+	)
+
+	try(closeRolloutFloater RenderManagerProcessorFloater)catch()
+	RenderManagerProcessorFloater = newRolloutFloater "Render Manager Processor" 250 250
+	addRollout roll RenderManagerProcessorFloater 
+)
+
+
+global renderManagerSubmiterFloater
+fn openRenderManagerSubmiter = 
+(
+	rollout roll "BOA Render Manager - Submiter"
+	(
+	  button btnSubmit "Submit"
+		
+	  on btnSubmit pressed do
+	  (
+		submitSceneAsNewRenderTask()
+	  )
+	)
+
+	try(closeRolloutFloater renderManagerSubmiterFloater)catch()
+	renderManagerSubmiterFloater = newRolloutFloater "Render Manager" 250 250
+	addRollout roll renderManagerSubmiterFloater 
+)
+
