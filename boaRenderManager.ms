@@ -5,12 +5,21 @@ tasksFolder = @"D:\Temp\Tasks\"
 tasksOutputFolder = @"D:\Temp\Tasks Output\"
 tasks = #()
 
-fn getNameOfTaskFromPath thePath = boaFnsGetDirectoryName (getFilenamePath thePath)
+fn submitSceneAsNewRenderTask =
+(
+	local newTaskName = (dotnetclass "System.Datetime").Now.ToString("yyyy' 'MM' 'dd' - 'HH':'mm':'ss" ) + " - " + (getFilenameFile maxfilename)
+	local newTaskFolder = pathConfig.appendPath tasksFolder newTaskName
+	local newTaskMaxFilePath = pathConfig.appendPath newTaskFolder maxfilename
+
+	makeDir newTaskFolder
+
+	saveMaxFile newTaskMaxFilePath
+)
 
 fn readTasks =
 (
-	local completedTasks = for f in boaFnsGetSubFolders tasksOutputFolder collect getNameOfTaskFromPath f
-	local taskFolders = for f in boaFnsGetSubFolders tasksFolder where findItem completedTasks (getNameOfTaskFromPath f) == 0 collect f
+	local completedTasks = for f in boaFnsGetSubFolders tasksOutputFolder collect boaFnsGetDirectoryName f
+	local taskFolders = for f in boaFnsGetSubFolders tasksFolder where findItem completedTasks (boaFnsGetDirectoryName f) == 0 and (boaFnsgetFilesWithPattern f "*.max").count > 0 collect f
 	tasks = for f in taskFolders collect (boaFnsgetFilesWithPattern f "*.max")[1]
 )
 
@@ -20,11 +29,13 @@ fn renderNext =
 	(
 		local task = tasks[1]
 		deleteItem tasks 1
-		local getTaskFolderName = getNameOfTaskFromPath task
+		local getTaskFolderName = boaFnsGetDirectoryName (getFilenamePath task)
 		local taskOutputFolderPath = pathConfig.appendPath tasksOutputFolder getTaskFolderName
 		makeDir taskOutputFolderPath
 		print ("rendering task: " + getTaskFolderName)
-		sleep 5
+		
+		render() --sleep 5
+
 		print ("finished task: " + getTaskFolderName)
 	)
 	else print "No Tasks Available"
@@ -33,14 +44,14 @@ fn renderNext =
 rollout renderManagerRoll "Render Manager"
 (
   timer clock "testClock" interval:1000 --tick once a second
-  label test ""
+  label lblStatus ""
   on clock tick do
   (
 	print "tick"
 	  
 	readTasks()
 	  
-    test.text = "remaining tasks: " + (tasks.count as string)
+    lblStatus.text = "remaining tasks: " + (tasks.count as string)
 	  
 	renderNext()
   )
